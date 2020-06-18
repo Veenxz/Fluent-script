@@ -1,0 +1,239 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                                                                                 ;
+;                            Fluent TUI Command V1.0.0                            ;
+;                           Beijing Forestry University                           ;
+;                                 Auther: Veenxz                                  ;
+;                                Date: 2020/03/18                                 ;
+;                                                                                 ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Notes:
+; When mesh generation, 
+; fluid domain named "fluid", id "0"
+; inlet boundary named "inlet", id "1"
+; symmetry boundary named "symmetry", id "2"
+; land boundary named "land", id "3"
+; wall boundary named "wall", id "4"
+; outlet boundary named "outlet", id "5"
+; Setting other boundary name & id can help you create reports more convience.
+
+; When solve you own case, replace "test" to your mesh & case names.
+
+; In Fluent TUI command, annotations can be writing after ";"
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                                                                                 ;
+;                       00  Fluent 20.1 TUI & Case Setting                        ;
+;                                                                                 ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Unnessary for Fluent version under 20.1, defaulted to off.
+; /file/set-tui-version "20.1"
+; file/cff-files? no
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                                                                                 ;
+;                        01  read case & mesh operate                             ;
+;                                                                                 ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Case reading supported formats: '.msh' '.cas' other formats please read help doc.
+/file read-case ".\test.msh"
+
+; Setting case & file writing dir to working dir.
+/file/auto-save/root-name ./
+
+; Mesh reorder
+/mesh/reorder/rd
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                                                                                 ;
+;                       02  model setting & boundary conditions                   ;
+;                                                                                 ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Turbulence Models
+; ke-rng ; ke-standard ; detached-eddy-simulation ; large-eddy-simulation ; kw-sst
+; ke-realizable, default turbulence model.
+/define/models/viscous/ke-realizable yes
+
+; scalable-wall-functions, default wall function.
+/define/models/viscous/near-wall-treatment/scalable-wall-functions yes
+
+; Standard Wall Function
+; selectable wall function, recommended for Y+ is equal to 1.
+; /define/models/viscous/near-wall-treatment/enhanced-wall-treatmen no
+
+; 2D large eddy simulation model, defaulted to off.
+; (rpsetvar 'les-2d? #t)
+; /define/models/viscous/large-eddy-simulation yes
+; /define/models/unsteady-2nd-order-bounded? yes
+; define/models/viscous/near-wall-treatment/werner-wengle-wallfn? yes
+
+; UDF interprete, defaulted to off.(When call this snippet, delete ; on even line)
+; /define/user-defined/interpreted-functions
+; UDF Source File Name [""] 
+; log_inlet_boundary_condition.c
+; CPP Command Name ["cpp"] 
+;
+; virtual machine stack size [10000] 
+;
+; display assembly code listing? [no]
+;
+; Quite UDF interprete
+; q
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                                                                                 ;
+;                       03  solution method & convergence criteria                ;
+;                                                                                 ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Define Pressure Velocity Coupling Scheme
+; SIMPLE & SIMPLEC algorithm usually using in unsteady flow sloving.
+;	20 for SIMPLE
+;	21 for SIMPLEC
+;	22 for PISO
+;	24 for Coupled
+/solve/set/p-v-coupling 21
+
+; Convective discretization scheme for Turbulent Dissipation Rate\Turbulent Kinetic Energy
+;	0 for First Order Upwind
+;	1 for Second Order Upwind
+;	4 for QUICK
+;	6 for Third-Order MUSCL
+/solve/set/discretization-scheme/epsilon 1
+/solve/set/discretization-scheme/k 1
+
+; Define under relaxation factor
+/solve/set/under-relaxation/mom 0.4
+/solve/set/under-relaxation/k 0.6
+/solve/set/under-relaxation/epsilon 0.6
+
+; Set the convergence criteria. for different turbulence model setting maybe different.
+/solve/monitors/residual convergence-criteria
+; continuity residual convergence criterion [0.001]
+1E-6
+; x-velocity residual convergence criterion [0.001]
+1E-6
+; y-velocity residual convergence criterion [0.001]
+1E-6
+; k residual convergence criterion [0.001]
+1E-6
+; epsilon residual convergence criterion [0.001]
+1E-6
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                                                                                 ;
+;                       04  report definitions & plots define                     ;
+;                                                                                 ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+/solve/report-definitions add
+; Enter name: 
+report-force
+; report-definition-type> 
+force
+; /solve/report-definitions/add/report-def-1> 
+thread-names
+; zone id/name(1) [()] 
+4
+
+;
+q
+
+/solve/report-definitions add
+; Enter name: 
+report-out-mass
+; report-definition-type> 
+; 2D case
+; flux-massflow
+; 3D case
+surface-massflowrate
+; /solve/report-definitions/add/report-out-mass> 
+zone-names
+; zone id/name(1) [()] 
+5
+
+;
+q
+
+/solve/report-files/add
+;Enter name: [report-file-0] 
+report-file
+;
+report-defs
+report-force
+report-out-mass
+
+;
+q
+
+/solve/report-plots/add
+;Enter name: [report-plot-1] 
+report-plot-force
+report-defs
+report-force
+
+;
+q
+
+/solve/report-plots/add
+;Enter name: [report-plot-1] 
+report-plot-massflow
+report-defs
+report-out-mass
+
+;
+q
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                                                                                 ;
+;                       05  solution & results write                              ;
+;                                                                                 ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; For transient case, defaulted to off.
+; /file/auto-save/data-frequency 100
+; /file/auto-save/append-file-name-with flow-time 6
+; /solve/set/time-step 0.001
+; /solve/set/max-iterations-per-time-step 30
+
+;Setting data sampling (When call this snippet, delete ; on singular line)
+; /solve/set/data-sampling
+; Data Sampling? [no] 
+; yes
+; Sampling interval [1] 
+; 1
+; Collect statistics for flow shear stresses? [yes] 
+; yes
+; Collect wall statistics? [yes] 
+; yes
+
+; Standard initialization
+/solve/initialize/compute-defaults/all-zones
+/solve/initialize/initialize-flow yes
+
+; Hybrid-initialization, defaulted to off.
+; /solve/initialize/hyb-initialization
+; FMG-initialization, operate after Hybrid-initialization, defaulted to off.
+; /solve/initialize/fmg-initialization
+
+; Setting iterate steps
+/solve/set/number-of-time-steps 100000
+/solve/iterate 100000
+
+;Write the case and data
+/file/write-case-data/".\test-solved"
+
+; If you have different mesh, you can use:
+; /mesh/replace "test_1.msh"
+; and copy TUI command in case_0

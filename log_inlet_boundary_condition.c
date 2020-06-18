@@ -1,9 +1,9 @@
 /****************************************************************************/
 /*                  ANSYS FLUENT log inlet boundary UDF                     */
 /*                       Test on ANSYS FLUENT 19.2                          */
-/*                       Author:Veenxz Version:1.0                          */
+/*                       Author:Veenxz Version:1.1                          */
 /*                      Beijing Forestry University                         */
-/*                        Update Date:2020/06/07                            */
+/*                        Update Date:2020/06/18                            */
 /****************************************************************************/
 
 #include "udf.h"
@@ -17,25 +17,8 @@
 #define nu 1.78938e-05  //kinematic viscosity               [m^2/s]
 #define k 0.41          //Karman constant                   [dimensionless]
 #define cmu 0.09        //model constant                    [dimensionless]
-
-//pre-calculate
-double Turb_Intensity(double z)
-{
-   double TI;
-   int Re;
-   Re = rho*U_av*L/nu;
-   TI = 0.16*pow(Re,-1/8);
-
-   return TI;
-}
-
-double Turb_Length_Scale(double z)
-{
-   double TL;
-   TL = 0.07*L/pow(cmu,3/4);
-
-   return TL;
-}
+#define TI 0.02771931  //Turb_Intensity
+#define TL 0.8520129  //Turb_Length_Scale
 
 /* profile for velocity [m/s]*/
 DEFINE_PROFILE(inlet_x_velocity, thread, index)
@@ -58,7 +41,7 @@ DEFINE_PROFILE(inlet_x_velocity, thread, index)
 DEFINE_PROFILE(k_profile,thread,index)
 {
     real x[ND_ND];
-    real z,U,TI;
+    real z,U;
     face_t f;
 
     begin_f_loop(f,thread)
@@ -66,7 +49,6 @@ DEFINE_PROFILE(k_profile,thread,index)
         F_CENTROID(x,f,thread);
         z = x[1];
         U = (U_star/k)*log((z+F_hight)/F_hight);
-        TI= Turb_Intensity(z);
         F_PROFILE(f,thread,index)=1.5*pow((U*TI),2);
     }
     end_f_loop(f,thread)
@@ -76,7 +58,7 @@ DEFINE_PROFILE(k_profile,thread,index)
 DEFINE_PROFILE(epsilon_profile,thread,index)
 {
     real x[ND_ND];
-    real z,U,TI,TKE,TL;
+    real z,U,TKE;
     face_t f;
 
     begin_f_loop(f,thread)
@@ -84,9 +66,7 @@ DEFINE_PROFILE(epsilon_profile,thread,index)
         F_CENTROID(x,f,thread);
         z = x[1];
         U = (U_star/k)*log((z+F_hight)/F_hight);
-        TI = Turb_Intensity(z);
         TKE=1.5*pow((U*TI),2);
-        TL=Turb_Length_Scale(z);
         //smaller tdr
         //F_PROFILE(f,thread,index)=pow(Cu,0.75)*pow(TKE,1.5)/TL;
         F_PROFILE(f,thread,index)=pow(TKE,1.5)/TL;
